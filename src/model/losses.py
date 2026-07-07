@@ -30,10 +30,10 @@ class LossBreakdown:
 
     def to_dict(self, prefix: str = "loss/") -> dict[str, float]:
         return {
-            f"{prefix}total": float(self.total),
-            f"{prefix}ce": float(self.ce),
-            f"{prefix}aux": float(self.aux),           # the routing/load-balance loss
-            f"{prefix}aux_weighted": float(self.aux_weighted),
+            f"{prefix}total": float(self.total.detach()),
+            f"{prefix}ce": float(self.ce.detach()),
+            f"{prefix}aux": float(self.aux.detach()),  # the routing/load-balance loss
+            f"{prefix}aux_weighted": float(self.aux_weighted.detach()),
         }
 
 

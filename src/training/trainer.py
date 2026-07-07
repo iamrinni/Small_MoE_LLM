@@ -41,6 +41,7 @@ class TrainConfig:
     adam_beta1: float = 0.9
     adam_beta2: float = 0.95
     precision: str = "bfloat16"
+    gradient_checkpointing: bool = False
     log_every: int = 20
     eval_every: int = 500
     save_every: int = 1000
@@ -60,6 +61,7 @@ class TrainConfig:
             adam_beta1=t.get("adam_beta1", 0.9),
             adam_beta2=t.get("adam_beta2", 0.95),
             precision=t.get("precision", "bfloat16"),
+            gradient_checkpointing=t.get("gradient_checkpointing", False),
             log_every=l.get("log_every_steps", 20),
             eval_every=e.get("eval_every_steps", 500),
             save_every=e.get("save_every_steps", 1000),
@@ -100,6 +102,10 @@ class Trainer:
             gradient_accumulation_steps=cfg.grad_accum_steps,
         )
         self.smallmoe = model  # keep the wrapper (for cfg + save)
+        if cfg.gradient_checkpointing:
+            # trade compute for memory — recompute activations in backward (fits big models on T4)
+            model.model.gradient_checkpointing_enable()
+            model.model.config.use_cache = False
         optimizer = build_optimizer(model, cfg.lr, cfg.weight_decay, (cfg.adam_beta1, cfg.adam_beta2))
         scheduler = build_scheduler(optimizer, cfg.warmup_steps, cfg.max_steps, cfg.lr, cfg.min_lr)
 
