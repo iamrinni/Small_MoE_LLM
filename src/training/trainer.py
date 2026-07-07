@@ -164,6 +164,15 @@ class Trainer:
                     if self.logger:
                         self.logger.log(metrics, step=self.step)
                     history.append({"step": self.step, **metrics})
+                    # live console line so progress is visible in a blocking cell (Colab)
+                    print(
+                        f"step {self.step}/{self.cfg.max_steps} | "
+                        f"ce {metrics.get('loss/ce', float('nan')):.3f} | "
+                        f"ppl {metrics.get('train/perplexity', float('nan')):.1f} | "
+                        f"lr {metrics.get('lr', 0):.2e} | "
+                        f"{metrics.get('throughput/tok_per_s', 0):.0f} tok/s",
+                        flush=True,
+                    )
                     t0, tokens_since_log = time.time(), 0
 
                 if self.val_sources and self.step % self.cfg.eval_every == 0:
