@@ -1,0 +1,41 @@
+# Small MoE LLM — pinned dependencies for clean-environment reproducibility.
+# Python >= 3.10 required.
+#
+# NOTE on PyTorch: install the build matching your platform/CUDA first, e.g.
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121   (CUDA 12.1)
+#   pip install torch                                                      (CPU / macOS)
+# then `pip install -r requirements.txt`.
+
+# --- core model / training ---
+torch>=2.4,<2.7
+transformers>=4.46,<4.50      # OLMoE (OlmoeForCausalLM) available since 4.45
+datasets>=3.0,<4.0
+accelerate>=1.0,<2.0
+tokenizers>=0.20
+sentencepiece>=0.2.0
+safetensors>=0.4.5
+
+# --- memory efficiency (optional; ZeRO offload) ---
+# deepspeed>=0.15            # uncomment if using DeepSpeed; needs a compiler toolchain
+
+# --- logging / experiment tracking ---
+wandb>=0.18
+tensorboard>=2.17
+
+# --- evaluation metrics ---
+evaluate>=0.4.3
+codebleu>=0.7.0               # CodeBLEU for the programming task
+tree-sitter-python>=0.21     # language parser required by codebleu (python)
+
+# --- data / config / utils ---
+numpy>=1.26,<3.0
+pyyaml>=6.0
+tqdm>=4.66
+
+# --- visualization / notebooks ---
+matplotlib>=3.8
+seaborn>=0.13
+jupyter>=1.0
+
+# --- testing ---
+pytest>=8.0

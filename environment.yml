@@ -1,0 +1,11 @@
+# Conda alternative to requirements.txt.
+#   conda env create -f environment.yml && conda activate small-moe-llm
+# For GPU PyTorch, install the matching CUDA build of torch via pip after creating the env.
+name: small-moe-llm
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.10,<3.12
+  - pip>=24.0
+  - pip:
+      - -r requirements.txt

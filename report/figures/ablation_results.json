@@ -1,0 +1,50 @@
+[
+  {
+    "variant": "baseline (top2, 8E, swiglu, rope)",
+    "ce": 1.151,
+    "perplexity": 3.2,
+    "load_balance": 0.993,
+    "specialization": 0.276,
+    "params_M": 15.43
+  },
+  {
+    "variant": "top1_gating",
+    "ce": 1.11,
+    "perplexity": 3.0,
+    "load_balance": 0.963,
+    "specialization": 0.532,
+    "params_M": 15.43
+  },
+  {
+    "variant": "16_experts",
+    "ce": 1.078,
+    "perplexity": 2.9,
+    "load_balance": 0.974,
+    "specialization": 0.49,
+    "params_M": 17.8
+  },
+  {
+    "variant": "gelu_expert",
+    "ce": 1.081,
+    "perplexity": 2.9,
+    "load_balance": 0.991,
+    "specialization": 0.349,
+    "params_M": 15.43
+  },
+  {
+    "variant": "learnable_pe",
+    "ce": 1.08,
+    "perplexity": 2.9,
+    "load_balance": 0.989,
+    "specialization": 0.273,
+    "params_M": 15.44
+  },
+  {
+    "variant": "no_load_balance",
+    "ce": 1.106,
+    "perplexity": 3.0,
+    "load_balance": 0.95,
+    "specialization": 0.538,
+    "params_M": 15.43
+  }
+]

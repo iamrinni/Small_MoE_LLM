@@ -1,0 +1,38 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# --- project: large / generated artifacts (NOT committed) ---
+checkpoints/**
+!checkpoints/.gitkeep
+data/raw/**
+!data/raw/.gitkeep
+data/processed/**
+!data/processed/.gitkeep
+data/hf_cache/
+logs/
+wandb/
+runs/
+*.pt
+*.bin
+*.safetensors
+
+# --- report build artifacts (keep .tex / .ipynb, ignore latex aux) ---
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.synctex.gz
+
+# --- OS / IDE ---
+.DS_Store
+.idea/
+.vscode/
