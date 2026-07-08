@@ -78,6 +78,17 @@ def test_checkpoint_saved_and_resumable(tok, tmp_path: Path):
     assert trainer2.step == 10
 
 
+def test_save_total_limit_prunes_old_checkpoints(tok, tmp_path: Path):
+    """Only the N most recent step_* checkpoints are kept on disk."""
+    cfg = TrainConfig(max_steps=10, warmup_steps=2, lr=3e-3, log_every=100,
+                      eval_every=10_000, save_every=2, save_total_limit=2, precision="float32")
+    trainer = Trainer(cfg, _small_model(tok), tok, _dataloader(tok, 400), tmp_path, max_len=48)
+    trainer.train()
+    step_ckpts = sorted(p.name for p in tmp_path.glob("step_*") if p.is_dir())
+    assert len(step_ckpts) == 2, f"expected 2 kept, got {step_ckpts}"
+    assert (tmp_path / "final").exists()          # final is always kept
+
+
 def test_per_modality_validation(tok, tmp_path: Path):
     cfg = TrainConfig(max_steps=12, warmup_steps=2, lr=3e-3, log_every=100,
                       eval_every=6, save_every=10_000, precision="float32")

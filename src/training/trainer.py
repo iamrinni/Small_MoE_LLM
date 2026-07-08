@@ -45,6 +45,7 @@ class TrainConfig:
     log_every: int = 20
     eval_every: int = 500
     save_every: int = 1000
+    save_total_limit: int = 3          # keep only the N most recent step_* checkpoints
     log_routing: bool = True
 
     @classmethod
@@ -65,6 +66,7 @@ class TrainConfig:
             log_every=l.get("log_every_steps", 20),
             eval_every=e.get("eval_every_steps", 500),
             save_every=e.get("save_every_steps", 1000),
+            save_total_limit=e.get("save_total_limit", 3),
             log_routing=l.get("log_routing_stats", True),
         )
 
@@ -225,7 +227,23 @@ class Trainer:
             hf_model = self.accelerator.unwrap_model(self.model).model
             hf_model.save_pretrained(str(path / "hf"))
             (path / "trainer_state.json").write_text(f'{{"step": {self.step}}}')
+            if not final:
+                self._prune_checkpoints()
         return path
+
+    def _prune_checkpoints(self) -> None:
+        """Keep only the `save_total_limit` most recent `step_*` checkpoints (disk hygiene)."""
+        limit = self.cfg.save_total_limit
+        if not limit or limit <= 0:
+            return
+        import shutil
+
+        ckpts = sorted(
+            (p for p in self.output_dir.glob("step_*") if p.is_dir()),
+            key=lambda p: int(p.name.split("_")[1]),
+        )
+        for old in ckpts[:-limit]:
+            shutil.rmtree(old, ignore_errors=True)
 
     def load_checkpoint(self, path: str | Path) -> None:
         self.accelerator.load_state(str(path))
