@@ -215,11 +215,23 @@ are retained to bound disk usage. On the T4 we observed ~1,700–2,300 tokens/s.
 ![Training curves: loss components, perplexity, learning-rate schedule, and routing entropy.](figures/training_curves.png)
 
 Cross-entropy falls rapidly from ~10.6 (random-init, $\log$ 50k ≈ 10.8) toward the low
-single digits. The **per-batch** training loss is intentionally noisy: because each logged
-step reflects a single small batch drawn from the mixture, and the four modalities have very
-different intrinsic difficulty, the curve shows a characteristic saw-tooth (easy logic/math
-batches dip to CE ≈ 1.6; hard language batches rise). The routing-entropy panel shows load
-entropy pinned near its maximum ($\log 8 = 2.08$) throughout — i.e., no expert collapse.
+single digits. The routing-entropy panel shows load entropy pinned near its maximum
+($\log 8 = 2.08$) throughout — i.e., no expert collapse.
+
+**Why the loss oscillates up and down (modality composition of each batch).** The per-batch
+training curve is a saw-tooth rather than a smooth line, and this is expected here. Each
+logged value is the loss of a *single small batch* (2 sequences), and every batch is drawn by
+the multi-task mixture sampler from one of four modalities with very different intrinsic
+difficulty — the per-modality validation perplexities span two orders of magnitude (logic
+≈ 2, math ≈ 32, code ≈ 64, language ≈ 560). Consequently, the loss at a given step is
+dominated by *which modality happened to land in that batch*, not by a sudden change in model
+quality: a batch of logic or math questions (highly constrained answers) drops the CE toward
+≈ 1.6, while a batch of open-web language text (a high-entropy, open-ended target) raises it
+back toward ≈ 7. The oscillation therefore reflects the *variance of the data mixture* under a
+tiny batch size, and it would shrink with a larger batch (which averages over more modalities
+per step) or with per-modality loss logging. The reliable signal for model quality is instead
+the **validation** curve below, which is measured on a fixed held-out set per modality and
+decreases monotonically (mean CE ≈ 4.02 → 3.66 between steps 500 and 1000).
 
 **Learning-rate schedule (why it rises then falls).** The learning-rate panel shows a linear
 increase to the peak (3e-4) over the first ~200 warmup steps, followed by a cosine decay
