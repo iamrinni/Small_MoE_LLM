@@ -1,99 +1,113 @@
 # Small Language Model with Sparse Mixture of Experts (Top-2 Gating)
 
 A **small, sparse Mixture-of-Experts (MoE)** decoder-only language model built on the
-**OLMoE** architecture, trained as a **multi-task** model across four text modalities:
+**OLMoE** architecture and trained as a **multi-task** model across four text modalities:
 **natural language, code, logic, and math**. Each token is routed to its **top-2 of 8
-experts**; experts are GeLU MLPs; positional encoding is RoPE; training/inference run in
-bfloat16.
+experts**; experts are SwiGLU MLPs; positional encoding is RoPE; training and inference run in
+**bfloat16**. The model has **172.6M** total parameters but activates only **~68.8M** per
+token — the compute–capacity decoupling that motivates sparse MoE.
 
-> Course project — ACDL 2026. Full task spec: `claude/33-ACDL-2026-Project-small-language-model with MoE (1).pdf`.
+> Course project — ACDL 2026. Author: **Iryna Yevdokymova**.
+> Full technical report: [`report/report.pdf`](report/report.pdf).
 > Step-by-step implementation plan: [`claude/instruction.md`](claude/instruction.md).
 
 ## Architecture at a glance
 
 | Aspect | Choice |
 |---|---|
-| Base | HF `transformers` `OlmoeForCausalLM` (OLMoE), instantiated small |
+| Base | HF `transformers` `OlmoeForCausalLM` (OLMoE), instantiated small, trained from scratch |
 | Experts / gating | 8 experts, **top-2** routing |
-| Expert FFN | **GeLU MLP** (SwiGLU as ablation) |
+| Expert FFN | **SwiGLU** (GeLU MLP as ablation) |
 | Positional encoding | **RoPE** (learnable as ablation) |
-| Precision | **bfloat16** |
-| Load balancing | aux load-balance loss + router z-loss |
-| Routing analysis | ported from `allenai/OLMoE` (expert load, entropy, specialization) |
+| Precision | **bfloat16** on GPU (fp32 on CPU for dev) |
+| Load balancing | auxiliary load-balance loss (the "routing loss" metric) |
+| Routing analysis | expert load, entropy, and modality→expert specialization heatmap |
 
-See [`claude/instruction.md`](claude/instruction.md) for the full design rationale and
-locked decisions.
+## Quickstart
 
-## Repository layout
+### Option 1 (recommended): Colab GPU
 
-```
-configs/     YAML model + training configs (model_small, train_small, smoke)
-scripts/     train / evaluate / prepare_data / analyze_routing + setup.sh
-src/         model, data, training, eval, utils packages
-data/        dataset preparation scripts + pointers (raw data is NOT committed)
-notebooks/   EDA + routing-analysis + results notebooks
-report/      LaTeX sources, figures, final PDF
-tests/       unit / scaffold tests
-```
+The full model trains in bf16 on a GPU (it does not fit on a 16 GB CPU box). Open the ready
+notebook directly from GitHub — no local setup:
 
-## Setup (clean environment)
+1. In Colab: **File → Open notebook → GitHub**, enter **`iamrinni/Small_MoE_LLM`**, pick
+   **`notebooks/colab_train.ipynb`**.
+2. **Runtime → Change runtime type → T4 GPU**.
+3. **Runtime → Run all.** It clones, installs, prepares data, trains, evaluates, renders the
+   routing heatmap, optionally ablates, and zips the model + logs + figures for download.
 
-Requires **Python ≥ 3.10**.
+### Option 2: local (clean environment, Python ≥ 3.10)
 
 ```bash
-# 1. (recommended) create a virtual env
+git clone https://github.com/iamrinni/Small_MoE_LLM.git && cd Small_MoE_LLM
 python -m venv .venv && source .venv/bin/activate
-
-# 2. install PyTorch for your platform first (see requirements.txt notes), then:
 pip install -r requirements.txt
-
-# 3. one-command bootstrap: install + tests + tiny smoke run
-bash scripts/setup.sh
+bash scripts/setup.sh          # install + tests + tiny smoke run
 ```
 
-Or with conda: `conda env create -f environment.yml`.
+On CPU the code runs in fp32 (development / smoke only); full bf16 training needs a GPU.
 
 ## Usage
 
 ```bash
-make data                                  # prepare/download dataset subsets
-make train  CONFIG=configs/train_small.yaml
-make eval   CONFIG=configs/train_small.yaml
-make smoke                                 # tiny end-to-end check
-make test                                  # unit tests
+make data                                    # prepare/download dataset subsets
+make train  CONFIG=configs/train_small.yaml  # train
+make eval   CONFIG=configs/train_small.yaml  # evaluate a checkpoint
+make smoke                                   # tiny end-to-end check
+make test                                    # unit tests (135)
+make report                                  # build report PDF/HTML
 ```
 
-All entry points take `--config <yaml>` and support `--set key=value` overrides, e.g.:
+Every entry point takes `--config <yaml>` and supports `--set key=value` overrides:
 
 ```bash
-python scripts/train.py --config configs/train_small.yaml --set training.lr=1e-4 model.num_experts=16
+python scripts/train.py --config configs/train_small.yaml \
+    --set training.max_steps=3000 model.num_experts=16
 ```
 
-## Running on Colab GPU (real training)
+## Repository layout
 
-The full 172M model trains in **bfloat16** on a GPU (it doesn't fit on a 16GB CPU box).
-Use the ready notebook [`notebooks/colab_train.ipynb`](notebooks/colab_train.ipynb):
+```
+configs/     YAML model + training configs (model_small, train_small, smoke, local_small)
+scripts/     train / evaluate / prepare_data / run_ablations / plot_metrics / setup.sh
+src/         model, data, training, eval, utils packages
+data/        dataset preparation (raw data is NOT committed)
+notebooks/   colab_train + 01_data_eda + 02_routing_analysis + 03_results
+report/      report.md (source), report.pdf, style.css, figures/
+results/     training log (JSONL) + TensorBoard from the GPU run
+tests/       135 unit tests (model, data, trainer, eval, ablations)
+```
 
-1. Push this repo to GitHub.
-2. Open the notebook in Colab, set runtime to **GPU** (T4/A100).
-3. Edit `REPO_URL`, then *Run All* — it clones, installs, prepares data, trains, evaluates,
-   runs ablations, and zips the results for download.
+## Results (summary)
 
-Notes: Colab already has a CUDA `torch`, so the notebook installs deps **without** torch;
-bf16 is selected automatically on GPU (fp16 fallback on pre-Ampere T4 via `resolve_dtype`).
+A short GPU run (Colab T4, bf16) demonstrates the full pipeline; see the report for details
+and the important note on the limited training budget.
+
+- **Training**: cross-entropy falls from ~10.6 toward the low single digits; per-modality
+  validation perplexity orders as logic ≈ 2 < math ≈ 32 < code ≈ 64 < language ≈ 560.
+- **Routing**: expert load balance stays ~0.92–0.997 (no expert collapse).
+- **Specialization**: experts specialize by modality in a *diffuse, overlapping* way
+  (`report/figures/routing_heatmap.png`), not one-expert-per-modality.
+- **Ablations**: load balancing improves utilization; a clear balance↔specialization
+  trade-off; RoPE beats learnable positions (`report/figures/ablation_comparison.png`).
+
+> **Note on compute.** Due to limited GPU resources the model was trained for few iterations;
+> reported metrics are lower bounds and improve with longer training.
+
+## Trained model checkpoint
+
+The 172M checkpoint (~329 MB) is not stored in git (GitHub's 100 MB/file limit). Reproduce it
+via the Colab notebook (Option 1), or attach it to a GitHub Release. See
+[`results/README.md`](results/README.md).
 
 ## Reproducibility
 
-- Single YAML config fully describes each run; global seeding via `src/utils/seed.py`.
-- Pinned dependencies (`requirements.txt`), deterministic flags, logged configs.
-- Logs to TensorBoard / Weights & Biases and a local JSON lines file.
-
-## Status
-
-Implementation proceeds in phases (see `claude/instruction.md`). **Phase 1 (scaffold &
-environment)** is complete; model, data, training, and evaluation land in later phases.
+- A single YAML config fully describes each run; global seeding via `src/utils/seed.py`.
+- Pinned dependencies (`requirements.txt`); logs to TensorBoard and JSON-lines.
+- 135 tests cover model, data, trainer, eval, and ablations — including an overfit-a-tiny-batch
+  gate and a checkpoint save/reload round-trip.
 
 ## License & attribution
 
-Built on [OLMoE](https://github.com/allenai/OLMoE) (Allen Institute for AI) and
-HuggingFace `transformers`. Routing-analysis utilities are adapted from the OLMoE repo.
+Built on [OLMoE](https://github.com/allenai/OLMoE) (Allen Institute for AI) and HuggingFace
+`transformers`. Datasets: C4, CodeParrot, GSM8K, LogiQA (see `data/README.md`).
