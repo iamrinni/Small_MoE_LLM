@@ -10,6 +10,25 @@ numbersections: true
 
 *ACDL 2026 Project · July 2026*
 
+---
+
+> # ⚠️ IMPORTANT NOTE ON COMPUTE AND RESULTS
+>
+> ## **Due to limited GPU resources, the model was trained for a small number of iterations. All reported metrics are therefore LOWER BOUNDS and are expected to improve substantially with a longer training run (more iterations, more data).**
+>
+> The full 172M model was trained on a single free-tier GPU (Colab **Tesla T4, 15 GB**) for a
+> **short schedule of a few hundred steps**. This was sufficient to demonstrate that the
+> architecture, training pipeline, routing, and evaluation all work correctly, and to observe
+> the expected qualitative trends (decreasing validation loss, balanced expert utilization,
+> emerging modality specialization). **It is not sufficient to reach competitive absolute task
+> accuracy.** The contribution of this project is the *design, implementation, and analysis* of
+> a sparse-MoE system — **not** state-of-the-art scores. Every quantitative result below
+> (perplexity, exact-match, accuracy, CodeBLEU, specialization score) would improve with a
+> longer run; the code, configs, and Colab notebook are set up to scale the number of training
+> steps directly (`--set training.max_steps=...`).
+
+---
+
 ## Abstract
 
 We design, implement, and evaluate a **small sparse Mixture-of-Experts (MoE) language
