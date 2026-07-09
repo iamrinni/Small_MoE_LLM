@@ -86,7 +86,7 @@ The PDF mixes two ambitions: (a) a **sparse MoE language model** (the core, well
 Routing-analysis logic from `run_moe_analysis.py` / `run_routing_analysis.py` (per-expert
 load, expert/gate entropy, router saturation, domain/vocabulary specialization) and the
 `plot_routing_analysis*.ipynb` / `olmoe_visuals.ipynb` figure recipes. We do **not** import
-1OLMoE's training internals (OLMo fork + megablocks, cluster-scale). Record what was ported
+111OLMoE's training internals (OLMo fork + megablocks, cluster-scale). Record what was ported
 and from where (attribution + report).
 
 ### Precision policy — bf16 target, device-aware (spec: "bfloat16 throughout training and inference")

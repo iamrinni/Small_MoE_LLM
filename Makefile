@@ -18,7 +18,7 @@ report:
 	@cd report && ( \
 	  pandoc report.md -o report.pdf --toc -V geometry:margin=1in 2>/dev/null \
 	    && echo "built report/report.pdf" \
-	  || ( pandoc report.md -o report.html --standalone --embed-resources --toc \
+	  || ( pandoc report.md -o report.html --standalone --embed-resources --toc --mathjax \
 	    && echo "no LaTeX engine; built report/report.html (open and Print-to-PDF)" ) )
 
 setup:

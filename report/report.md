@@ -1,4 +1,4 @@
-11---
+---
 title: "A Small Multi-Task Language Model with a Sparse Mixture of Experts (Top-2 Gating)"
 subtitle: "Design, Implementation, and Evaluation on an OLMoE-based Architecture"
 author: "ACDL 2026 Project"
@@ -113,8 +113,7 @@ For a token representation $x \in \mathbb{R}^{d}$, a linear **router** produces 
 the $E{=}8$ experts, a softmax gives gate probabilities, and the **top-2** experts are
 selected. Their outputs are combined by the (renormalized) gate weights:
 
-$$g = \mathrm{softmax}(W_r x), \quad \mathcal{T} = \mathrm{top\text{-}2}(g), \quad
-y = \sum_{i \in \mathcal{T}} \frac{g_i}{\sum_{j\in\mathcal{T}} g_j}\, E_i(x).$$
+$$g = \mathrm{softmax}(W_r x), \quad \mathcal{T} = \mathrm{top2}(g), \quad y = \sum_{i \in \mathcal{T}} \frac{g_i}{\sum_{j\in\mathcal{T}} g_j}\, E_i(x).$$
 
 Each expert $E_i$ is a **SwiGLU MLP**, $E_i(x) = W^{i}_{\text{down}}\big(\mathrm{SiLU}(W^{i}_{\text{gate}} x)\odot W^{i}_{\text{up}} x\big)$.
 The experts hold ~80% of all parameters (138.4M of 172.6M), which is why sparse activation is
@@ -336,11 +335,41 @@ python scripts/evaluate.py    --config configs/train_small.yaml \
 ```
 
 Determinism is enforced via global seeding; every run is fully described by a single YAML
-config (plus `--set key=value` overrides). Logs are emitted to TensorBoard and JSON-lines. A
-ready `notebooks/colab_train.ipynb` reproduces the full GPU pipeline (train → evaluate →
-ablate → download results). The test suite (135 tests) covers the model, data pipeline,
-trainer, evaluation metrics, and ablations, including an overfit-a-tiny-batch gate for the
-model and a save/reload round-trip for checkpoints.
+config (plus `--set key=value` overrides). Logs are emitted to TensorBoard and JSON-lines. The
+test suite (135 tests) covers the model, data pipeline, trainer, evaluation metrics, and
+ablations, including an overfit-a-tiny-batch gate for the model and a save/reload round-trip
+for checkpoints.
+
+## Reproducing on a Colab GPU
+
+The full 172M model trains in bf16 on a GPU (it does not fit on a 16 GB CPU box). The ready
+notebook `notebooks/colab_train.ipynb` runs the entire pipeline end-to-end. Steps:
+
+1. Push the repository to GitHub and open the notebook in Google Colab.
+2. Set the runtime to GPU: *Runtime → Change runtime type → T4 GPU* (or A100).
+3. Set `REPO_URL` in the clone cell, then *Runtime → Run all*.
+
+The notebook (a) clones the repo, (b) installs dependencies *without* torch (Colab ships a
+CUDA build), (c) runs a smoke test, (d) streams and caches the data, (e) trains the full model
+in bf16, (f) evaluates the checkpoint and renders the routing heatmap, (g) optionally runs the
+ablation matrix, and (h) zips the trained model + logs + metrics + figures for download. The
+key commands, runnable directly in a Colab cell, are:
+
+```bash
+!git clone https://github.com/<user>/Small_MoE_LLM.git && cd Small_MoE_LLM
+!grep -v '^torch' requirements.txt > /tmp/r.txt && pip install -q -r /tmp/r.txt
+!python scripts/prepare_data.py --config configs/train_small.yaml --set data.max_samples_per_modality=20000
+!python scripts/train.py --config configs/train_small.yaml --set \
+    training.max_steps=3000 training.per_device_batch_size=2 training.grad_accum_steps=16 \
+    training.gradient_checkpointing=true data.max_seq_len=512 eval.save_total_limit=2
+!python scripts/evaluate.py --config configs/train_small.yaml \
+    --checkpoint checkpoints/small-moe-baseline/final --n_examples 30
+```
+
+On a free T4 the settings above (batch 2, sequence 512, gradient accumulation 16, gradient
+checkpointing) keep peak memory around ~9 GB and run at ~1,700–2,300 tokens/s. To build this
+report's PDF on Colab: `!apt-get -qq install -y texlive-xetex && pandoc report/report.md -o
+report/report.pdf --toc -V geometry:margin=1in`.
 
 # Conclusion and Future Work
 
