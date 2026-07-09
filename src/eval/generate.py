@@ -30,8 +30,14 @@ def generate_completions(
     temperature: float = 1.0,
     top_p: float = 0.95,
     num_return_sequences: int = 1,
+    repetition_penalty: float = 1.3,
+    no_repeat_ngram_size: int = 3,
 ) -> list[str]:
-    """Generate `num_return_sequences` completions for one modality-tagged prompt."""
+    """Generate `num_return_sequences` completions for one modality-tagged prompt.
+
+    `repetition_penalty` and `no_repeat_ngram_size` suppress the degenerate loops that greedy
+    decoding produces on a weakly-trained model (they change decoding only, not the model).
+    """
     model.model.eval()
     text = build_prompt(prompt, modality)
     enc = tokenizer(text, return_tensors="pt")
@@ -45,6 +51,8 @@ def generate_completions(
         do_sample=do_sample,
         num_return_sequences=num_return_sequences,
         pad_token_id=tokenizer.pad_token_id,
+        repetition_penalty=repetition_penalty,
+        no_repeat_ngram_size=no_repeat_ngram_size,
     )
     if do_sample:
         gen_kwargs.update(temperature=temperature, top_p=top_p)
