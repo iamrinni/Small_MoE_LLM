@@ -36,3 +36,8 @@ report/*.synctex.gz
 .DS_Store
 .idea/
 .vscode/
+
+# task brief (kept local, not published)
+claude/*.pdf
+report/report.html
+report/report.pdf

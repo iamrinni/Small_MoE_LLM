@@ -1,4 +1,4 @@
-.PHONY: help setup install test smoke train eval data clean lint
+.PHONY: help setup install test smoke train eval data clean lint report
 
 CONFIG ?= configs/train_small.yaml
 
@@ -11,7 +11,15 @@ help:
 	@echo "  make data     - prepare/download datasets"
 	@echo "  make train    - train (CONFIG=configs/train_small.yaml)"
 	@echo "  make eval     - evaluate a checkpoint"
+	@echo "  make report   - build report PDF (needs pandoc + a LaTeX engine) / HTML fallback"
 	@echo "  make clean    - remove caches and __pycache__"
+
+report:
+	@cd report && ( \
+	  pandoc report.md -o report.pdf --toc -V geometry:margin=1in 2>/dev/null \
+	    && echo "built report/report.pdf" \
+	  || ( pandoc report.md -o report.html --standalone --embed-resources --toc \
+	    && echo "no LaTeX engine; built report/report.html (open and Print-to-PDF)" ) )
 
 setup:
 	bash scripts/setup.sh
