@@ -218,9 +218,24 @@ Cross-entropy falls rapidly from ~10.6 (random-init, $\log$ 50k ≈ 10.8) toward
 single digits. The **per-batch** training loss is intentionally noisy: because each logged
 step reflects a single small batch drawn from the mixture, and the four modalities have very
 different intrinsic difficulty, the curve shows a characteristic saw-tooth (easy logic/math
-batches dip to CE ≈ 1.6; hard language batches rise). The learning-rate panel confirms the
-warmup-then-cosine schedule, and the routing-entropy panel shows load entropy pinned near its
-maximum ($\log 8 = 2.08$) throughout — i.e., no expert collapse.
+batches dip to CE ≈ 1.6; hard language batches rise). The routing-entropy panel shows load
+entropy pinned near its maximum ($\log 8 = 2.08$) throughout — i.e., no expert collapse.
+
+**Learning-rate schedule (why it rises then falls).** The learning-rate panel shows a linear
+increase to the peak (3e-4) over the first ~200 warmup steps, followed by a cosine decay
+toward the floor (3e-5). The rising segment is a **warmup**: at initialization the weights are
+random and the gradients are high-variance, while AdamW's first- and second-moment estimates
+are still biased toward their zero initialization, which inflates early step sizes. Applying
+the full learning rate immediately would produce large, poorly-directed updates and can
+destabilize training — a risk amplified by the transformer architecture and by bf16's reduced
+mantissa. Ramping the rate up lets the moment estimates and gradient statistics stabilize
+before large steps are taken. The falling segment is a **cosine decay**: once training is
+underway, a high learning rate causes the optimizer to overshoot good regions and oscillate,
+so the rate is annealed to take progressively smaller, more precise steps as the model
+settles. The cosine shape (rather than linear) holds the rate high through the middle of
+training, where most learning happens, and slows smoothly near the end. This schedule also
+explains a feature of the loss panel: the deepest cross-entropy dips coincide with the
+peak-learning-rate region around step 200, where the model updates fastest.
 
 ### Per-modality validation
 
