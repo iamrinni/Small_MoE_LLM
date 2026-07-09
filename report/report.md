@@ -12,9 +12,11 @@ numbersections: true
 
 ---
 
-> # ⚠️ IMPORTANT NOTE ON COMPUTE AND RESULTS
+> **⚠️ IMPORTANT NOTE ON COMPUTE AND RESULTS**
 >
-> ## **Due to limited GPU resources, the model was trained for a small number of iterations. All reported metrics are therefore LOWER BOUNDS and are expected to improve substantially with a longer training run (more iterations, more data).**
+> **Due to limited GPU resources, the model was trained for a small number of iterations. All
+> reported metrics are therefore lower bounds and are expected to improve substantially with a
+> longer training run (more iterations, more data).**
 >
 > The full 172M model was trained on a single free-tier GPU (Colab **Tesla T4, 15 GB**) for a
 > **short schedule of a few hundred steps**. This was sufficient to demonstrate that the
