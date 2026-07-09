@@ -1,50 +1,50 @@
 [
   {
     "variant": "baseline (top2, 8E, swiglu, rope)",
-    "ce": 1.151,
-    "perplexity": 3.2,
-    "load_balance": 0.993,
-    "specialization": 0.276,
+    "ce": 1.109,
+    "perplexity": 3.0,
+    "load_balance": 0.988,
+    "specialization": 0.253,
     "params_M": 15.43
   },
   {
     "variant": "top1_gating",
-    "ce": 1.11,
-    "perplexity": 3.0,
-    "load_balance": 0.963,
-    "specialization": 0.532,
+    "ce": 1.145,
+    "perplexity": 3.1,
+    "load_balance": 0.944,
+    "specialization": 0.45,
     "params_M": 15.43
   },
   {
     "variant": "16_experts",
-    "ce": 1.078,
+    "ce": 1.076,
     "perplexity": 2.9,
-    "load_balance": 0.974,
-    "specialization": 0.49,
+    "load_balance": 0.975,
+    "specialization": 0.462,
     "params_M": 17.8
   },
   {
     "variant": "gelu_expert",
-    "ce": 1.081,
+    "ce": 1.063,
     "perplexity": 2.9,
-    "load_balance": 0.991,
-    "specialization": 0.349,
+    "load_balance": 0.993,
+    "specialization": 0.222,
     "params_M": 15.43
   },
   {
     "variant": "learnable_pe",
-    "ce": 1.08,
-    "perplexity": 2.9,
-    "load_balance": 0.989,
-    "specialization": 0.273,
+    "ce": 1.187,
+    "perplexity": 3.3,
+    "load_balance": 0.984,
+    "specialization": 0.351,
     "params_M": 15.44
   },
   {
     "variant": "no_load_balance",
-    "ce": 1.106,
-    "perplexity": 3.0,
-    "load_balance": 0.95,
-    "specialization": 0.538,
+    "ce": 1.078,
+    "perplexity": 2.9,
+    "load_balance": 0.935,
+    "specialization": 0.504,
     "params_M": 15.43
   }
 ]
