@@ -1,14 +1,16 @@
 ---
-title: "A Small Multi-Task Language Model with a Sparse Mixture of Experts (Top-2 Gating)"
-subtitle: "Design, Implementation, and Evaluation on an OLMoE-based Architecture"
-author: "ACDL 2026 Project"
-date: "July 2026"
 geometry: margin=1in
 fontsize: 11pt
 numbersections: true
 ---
 
-# Abstract
+# Technical Report — Small Language Model with Sparse Mixture of Experts (Top-2 Gating)
+
+**Design, Implementation, and Evaluation on an OLMoE-based Architecture**
+
+*ACDL 2026 Project · July 2026*
+
+## Abstract
 
 We design, implement, and evaluate a **small sparse Mixture-of-Experts (MoE) language
 model** built on the **OLMoE** architecture, trained jointly across four text modalities —
@@ -27,7 +29,7 @@ and (iii) experts specialize by modality in a **diffuse, overlapping** way rathe
 naïve "one expert per modality." All code, configs, logs, and figures are released for
 reproducibility.
 
-# Introduction and Objectives
+## Introduction and Objectives
 
 Large language models increasingly rely on **sparsely-activated** architectures to grow
 parameter count without a proportional growth in per-token compute. A Mixture of Experts
@@ -48,7 +50,7 @@ OLMoE**, an open-source MoE framework. Concretely, we set out to:
 4. Run **ablation studies** (top-2 vs top-1, 8 vs 16 experts, SwiGLU vs GeLU, RoPE vs
    learnable, with/without load balancing) and analyze **expert specialization**.
 
-## Scope and a note on "multimodal"
+### Scope and a note on "multimodal"
 
 The project brief lists both a set of **text datasets** (code, logic, math, education) and,
 in its architecture section, a **vision-language** base with **cross-attention** plus a **VQA**
@@ -63,7 +65,7 @@ Of the eight core architecture requirements, items 2–7 (OLMoE framework, top-2
 experts, SwiGLU experts, bf16, RoPE/learnable PE) are fully met; items 1 and 8 (vision-language,
 cross-attention) are met only if the optional extension is completed.
 
-# Related Work
+## Related Work
 
 **Sparse Mixture of Experts.** The modern sparse-MoE line begins with the sparsely-gated MoE
 layer of Shazeer et al. (2017) and matures with **Switch Transformer** (Fedus et al., 2021),
@@ -84,14 +86,14 @@ routing-analysis methodology (per-expert load, entropy, specialization).
 gated expert FFN. We adopt both as defaults and ablate the alternatives (learnable absolute
 positions; a GeLU MLP).
 
-# Model Architecture
+## Model Architecture
 
 We build on HuggingFace `transformers`' `OlmoeForCausalLM` and wrap it in a thin `SmallMoE`
 module that adds routing instrumentation, a combined loss, and configuration glue. The model
 is a decoder-only transformer in which every feed-forward block is replaced by a sparse MoE
 block.
 
-## Configuration
+### Configuration
 
 | Component            | Value                              |
 |----------------------|------------------------------------|
@@ -107,7 +109,7 @@ block.
 | Total parameters     | **172.6M**                         |
 | Active per token     | **~68.8M** (top-2 of 8)            |
 
-## The sparse MoE block
+### The sparse MoE block
 
 For a token representation $x \in \mathbb{R}^{d}$, a linear **router** produces logits over
 the $E{=}8$ experts, a softmax gives gate probabilities, and the **top-2** experts are
@@ -119,7 +121,7 @@ Each expert $E_i$ is a **SwiGLU MLP**, $E_i(x) = W^{i}_{\text{down}}\big(\mathrm
 The experts hold ~80% of all parameters (138.4M of 172.6M), which is why sparse activation is
 what makes the model affordable: only 2 of 8 experts run per token.
 
-## Parameter distribution
+### Parameter distribution
 
 | Component               | Parameters | Share |
 |-------------------------|-----------:|------:|
@@ -129,7 +131,7 @@ what makes the model affordable: only 2 of 8 experts run per token.
 | Router / gate           | 0.03M      | <0.1% |
 | RMSNorms                | 0.01M      | <0.1% |
 
-## Load balancing
+### Load balancing
 
 Because the router could collapse onto a few experts, we add the Switch/OLMoE **auxiliary
 load-balancing loss** (weight $\alpha{=}0.01$), which encourages a uniform expert assignment.
@@ -138,16 +140,16 @@ The total training objective is $\mathcal{L} = \mathcal{L}_{\text{CE}} + \alpha\
 $\mathcal{L}_{\text{aux}}$ is the reported **routing loss**. (ST-MoE's router z-loss is
 available as a dormant option but was not needed for stable bf16 training.)
 
-## Precision policy
+### Precision policy
 
 The brief requires bf16 "throughout training and inference." We honor this on GPU (where
 training runs) and select fp32 automatically on CPU for local development, because CPU lacks a
 native bf16 matmul and emulates it ~67× slower (measured). This device-aware policy keeps the
 default GPU path in bf16 while allowing a fast, correct CPU debug path.
 
-# Datasets and the Multi-Task Pipeline
+## Datasets and the Multi-Task Pipeline
 
-## Sources
+### Sources
 
 We select one dataset per modality, streamed from the HuggingFace Hub and cached as a capped
 subsample (20k examples per modality where available):
@@ -159,7 +161,7 @@ subsample (20k examples per modality where available):
 | Math      | `openai/gsm8k`                       | 7,473    |
 | Logic     | `lucasmccabe/logiqa`                 | 7,376    |
 
-## Formatting: modality tags and prompt masking
+### Formatting: modality tags and prompt masking
 
 Every example is converted to a uniform `{modality, prompt, completion}` record and prefixed
 with a **modality tag** (`<|lang|>`, `<|code|>`, `<|logic|>`, `<|math|>`) so the router can
@@ -176,7 +178,7 @@ trained; for QA/reasoning (math, logic) the question is masked and the model is 
 produce the answer. This "train-on-completion" scheme teaches the model to *answer* rather
 than to memorize question phrasings.
 
-## Mixture-of-tasks sampler
+### Mixture-of-tasks sampler
 
 A weighted interleaving sampler draws each training example's modality from configurable
 proportions — **language 0.40, code 0.25, math 0.20, logic 0.15** — with a fixed seed for
@@ -184,7 +186,7 @@ reproducibility, and it records the *realized* mixture to confirm it matches the
 is the brief's "mixture-of-tasks routing logic." When a finite source is exhausted its weight
 is renormalized across the remainder.
 
-# Training Setup
+## Training Setup
 
 Training uses HuggingFace **Accelerate** with bf16 mixed precision on a single GPU (Colab
 T4). Key settings:
@@ -206,9 +208,9 @@ throughput, and full routing statistics (per-expert load, gate/load entropy) to 
 TensorBoard and a JSON-lines file. Checkpoints are resumable, and only the most recent *N*
 are retained to bound disk usage. On the T4 we observed ~1,700–2,300 tokens/s.
 
-# Results
+## Results
 
-## Training dynamics
+### Training dynamics
 
 ![Training curves: loss components, perplexity, learning-rate schedule, and routing entropy.](figures/training_curves.png)
 
@@ -220,7 +222,7 @@ batches dip to CE ≈ 1.6; hard language batches rise). The learning-rate panel 
 warmup-then-cosine schedule, and the routing-entropy panel shows load entropy pinned near its
 maximum ($\log 8 = 2.08$) throughout — i.e., no expert collapse.
 
-## Per-modality validation
+### Per-modality validation
 
 Validation perplexity, measured on held-out examples per modality, orders the modalities by
 difficulty exactly as expected and improves over training (values from an extended run):
@@ -238,7 +240,7 @@ and 1000), confirming that the smooth *validation* signal improves even while th
 diverse, open-ended target; logic is lowest because its multiple-choice answers are highly
 constrained.
 
-## MoE metrics
+### MoE metrics
 
 Across the run the **routing loss** (aux) stayed near ~2.0 (unweighted) and the **load
 balance** (load-entropy / max-entropy) remained in the range **0.92–0.997**, i.e. experts
@@ -246,7 +248,7 @@ were used near-uniformly. The following figure shows the final per-expert load.
 
 ![Per-expert token load at the end of training; the dashed line is the uniform reference (1/8).](figures/expert_load.png)
 
-# Ablation Studies
+## Ablation Studies
 
 We compare six architectural variants, each trained under identical data, seed, and budget.
 To keep the matrix affordable, ablations use a **compact ~15M model on a synthetic
@@ -285,7 +287,7 @@ as the default, matching the brief.
 **empirically justifying RoPE as the default** — the brief's request to "experiment and report
 findings" on positional encoding.
 
-# MoE Behavior Analysis: Expert Specialization
+## MoE Behavior Analysis: Expert Specialization
 
 The central question for a multi-task MoE is whether experts specialize by modality. Using
 the 172M model, we forward held-out examples grouped by modality and aggregate the per-expert
@@ -310,7 +312,7 @@ discover token-level structure. The specialization score is modest here because 
 is more heterogeneous than the synthetic ablation mixture and (b) the analyzed checkpoint was
 trained only briefly; longer training sharpens specialization.
 
-# Limitations and Threats to Validity
+## Limitations and Threats to Validity
 
 - **Training budget.** The reported 172M checkpoint was trained for a short schedule; absolute
   task metrics (e.g. GSM8K exact-match) are far below well-trained models. The contribution is
@@ -322,7 +324,7 @@ trained only briefly; longer training sharpens specialization.
 - **Evaluation scale.** Generation-based metrics were computed on modest sample sizes; wider
   evaluation would tighten confidence intervals.
 
-# Reproducibility
+## Reproducibility
 
 The repository is runnable from a clean environment:
 
@@ -340,7 +342,7 @@ test suite (135 tests) covers the model, data pipeline, trainer, evaluation metr
 ablations, including an overfit-a-tiny-batch gate for the model and a save/reload round-trip
 for checkpoints.
 
-## Reproducing on a Colab GPU
+### Reproducing on a Colab GPU
 
 The full 172M model trains in bf16 on a GPU (it does not fit on a 16 GB CPU box). The ready
 notebook `notebooks/colab_train.ipynb` runs the entire pipeline end-to-end. Steps:
@@ -371,7 +373,7 @@ checkpointing) keep peak memory around ~9 GB and run at ~1,700–2,300 tokens/s.
 report's PDF on Colab: `!apt-get -qq install -y texlive-xetex && pandoc report/report.md -o
 report/report.pdf --toc -V geometry:margin=1in`.
 
-# Conclusion and Future Work
+## Conclusion and Future Work
 
 We built a small, fully-reproducible sparse-MoE language model on the OLMoE architecture and
 trained it jointly over four text modalities with top-2 routing. Our experiments show that
@@ -382,7 +384,7 @@ training run for competitive task metrics; implementing the vision-language cros
 path with an added image-text corpus (VQAv2/COCO); the router z-loss for very-low-precision
 stability; and expert-choice routing as an alternative to token-choice top-2.
 
-# References
+## References
 
 1. Shazeer et al. *Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer.* ICLR 2017.
 2. Lepikhin et al. *GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding.* 2020.
