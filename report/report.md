@@ -293,6 +293,35 @@ were used near-uniformly. The following figure shows the final per-expert load.
 
 ![Per-expert token load at the end of training; the dashed line is the uniform reference (1/8).](figures/expert_load.png)
 
+## Per-task metrics
+
+We evaluate the trained 172M checkpoint with the task-appropriate metrics from the brief,
+generating answers on held-out examples (`scripts/evaluate.py`, 40 examples per task):
+
+| Task            | Metric                     | Score  |
+|-----------------|----------------------------|-------:|
+| Math (GSM8K)    | Exact-match (final answer) | 0.025  |
+| Logic (LogiQA)  | Accuracy (4-choice)        | 0.225  |
+| Programming     | CodeBLEU                   | 0.265  |
+| MoE (all tasks) | Specialization score       | 0.197  |
+
+These numbers are consistent with the compute note at the top of the report: after only a few
+hundred training steps the model is far from competitive. Math exact-match (2.5%) is near
+zero; logic accuracy (22.5%) is around the 25% random baseline for four options; CodeBLEU
+(0.265, computed with the parser-free approximation described below) reflects surface-level
+code similarity rather than functional correctness. They are reported here as a working,
+end-to-end measurement pipeline and a **lower-bound baseline** that a longer run improves.
+
+**Pass@k and CodeBLEU details.** Pass@k is implemented (`src/eval/metrics.pass_at_k`, the
+unbiased Codex estimator) and unit-tested, but computing it requires an *execution* benchmark
+with unit tests per problem (HumanEval/MBPP-style); since the training corpus here is
+next-token code (CodeParrot) rather than a checked problem set, we report **CodeBLEU** for the
+programming task and provide Pass@k as a ready metric for an execution-based evaluation. The
+official `codebleu` package needs a tree-sitter parser that is unavailable in some
+environments (e.g. Python 3.12); the pipeline transparently falls back to a parser-free
+n-gram + keyword-weighted approximation (flagged `official: false` in the results) so a score
+is always produced.
+
 # Ablation Studies
 
 We compare six architectural variants, each trained under identical data, seed, and budget.
